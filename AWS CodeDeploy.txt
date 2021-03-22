@@ -1,0 +1,181 @@
+Hello, Cloud Gurus. So far we've committed our code. We've built our code.
+Now it's time to deploy our code with AWS CodeDeploy.
+So what is AWS CodeDeploy? Well,
+it's a fully managed deployment service that automates deployments to
+Amazon EC2 instances, on premises instances,
+and Lambda functions.
+It makes it easier to rapidly deploy new features,
+update Lambda function versions, avoid downtime during deployment,
+and handle the full deployment process without any human intervention.
+All right.
+So what I want to do now is automatically deploy that A Cloud Guru code that we
+put into code commit already onto some EC2 instances. To start off,
+we're going to jump into the IAM console first to create a few roles,
+and then we'll go to the EC2 console and spin up some instances.
+So let's go and do that now. Okay. So I am in the CodeDeploy console here,
+but I'm going to load IAM, I am
+going to create a role I'll click create now EC2 is
+going to use this role. We'll click on next.
+Now I want CodeDeploy and I'll select AWS CodeDeploy,
+full access.
+Don't need any tags and I'll call this EC2 CodeDeploy,
+and we'll create that role.
+Now I need one more role for CodeDeploy to use.
+So I'm going to click on CodeDeploying, select your use case.
+It's going to be CodeDeploy, click next.
+It already selected the AWS CodeDeploy role for us and click next
+review. I'm going to call this CodeDeployer,
+create role,
+and there's one last thing I need to do here in the EC2 CodeDeploy.
+I'm going to attach one more policy search for S3,
+and we'll give it Amazon S3 full access and I'll tell you why a little bit later
+on. Okay. Let's head on over to EC2.
+Firstly, I'm going to make a load balancer,
+which will distribute traffic to all of our servers.
+So let's create load balancer.
+I'm going to use an application load balancer.
+I'm just going to call that ACG.
+It'll be internet facing using IPv4 and the listener will just be HTTP
+on port 80.
+Let's like all the availability zones click next.
+That's fine. Let's create a security group
+and allows TCP on port 80. That sounds good.
+We're going to create our target group.
+Now let's just call that target and advanced health check
+settings, and I'll make this 10,
+this would just make the process a bit quicker later on and I'll show you why.
+So I click register targets.
+We don't have any instances yet. This is all fine and click create.
+Okay, now we can close this.
+We'll go up to the dashboard and let's launch some instances.
+I'm going to use Ubuntu server 18.
+T2.micro is fine.
+Now I'm going to launch three and I'm going to launch them into an auto scaling
+group.
+So let's click on this and we're going to create the launch configuration call
+it APG and we're going to use the EC2 CodeDeploy IAM
+role. So it's very important you have that selected.
+Now in the advanced settings, we are going to use some user data.
+So I'm going to paste it in here and this script will be available as a resource
+for this lecture.
+All it's going to do is an apt get update it installs Ruby and wget.
+It'll go into the Ubuntu home directory,
+and it's going to install the latest version of CodeDeploy.
+It'll run the installer and then it'll start the CodeDeploy agent service.
+So this is all automatic. We don't have to do anything else.
+So we'll go next and we'll add storage. Storage is fine.
+Configure the security group.
+We'll allow SSH from everywhere and we'll add a rule.
+We'll select HTTP just so people can actually get to our website.
+Now we'll click review
+and that all looks good. So let's click create.
+I'm going to use the key pair I've set up already.
+Make sure you have one of them just in case you have to SSH to an instance to
+see what's wrong with it. So we'll create our launch configuration.
+Now we're creating our auto scaling group. I'll call that ACG as well.
+We're going to start with three instances.
+The default network is fine and let's just select all the subnets
+we can Configure scaling.
+Let's keep it as its initial size for now.
+If you'd like to set up an email notification, you can do so here.
+Now CodeDeploy can use the auto scaling group,
+or it can use tags to determine which servers to deploy the software to.
+So just to show you how you were doing,
+I can create a key of site and the value will be pet and that will be
+applied to every instance created.
+So I'm going to create these auto-scaling group.
+Now we can view out auto scaling groups
+if you jump over to activity history.
+So we've got a status successful and we're launching a new EC2 instance three
+times, which is awesome. So all that work let's go and get the CodeDeployed.
+I'm going to head back to the CodeDeploy section of the developer tools.
+Here we are. I'm going to create an application. I'm going to call it, Hey,
+pet guru. It's going to be using EC2.
+Let's create that. Now I'm going to create a deployment group.
+We'll call that pet guru as well.
+Service role will be the CodeDeployer that we created before.
+We're going to use in place. There's also an option of blue green,
+and I'll be talking about this in the deployment strategies lecture coming up
+the environment is Amazon EC2 auto scaling groups.
+We're going to select the auto scaling group.
+And that's how it knows what to deploy to. If you clicked Amazon EC2 instance,
+I could have selected the key site and the value of pet,
+and that would also deploy to the same service,
+but because we've got an auto scaling group,
+we can just deploy directly to that.
+Now we do have a load balancer and that was called target.
+We'll have a look at advanced options, triggers, alarms, rollbacks.
+We don't need any of that for now. So let's create our deployment group.
+Now We have our application and our deployment group let's create something to
+deploy. So we'll click create deployment
+A Pet Guru. Now you'll immediately see here that revision type.
+My application is thought in Amazon S3 or my application is thought in good
+hump. There's no option here to select code commit.
+This won't be a problem in the next lecture as we're going to be using code
+pipeline, which doesn't have this restriction, but for now,
+I'm just going to grab a zip file from GitHub and put it in an S3 bucket
+quickly.
+So I'll w get my file and I'll give you this link as well in the resources.
+We'll move that to my desktop, to make it easier to get to.
+Now, I'm going to open up the S3 console or going to my ACG DevOps.
+I'll click upload, and I'll drag my A Pet Guru zip into this directory.
+Let's grant public read just in case we need it
+and we'll upload. Okay.
+Click on that. Let's copy the link
+and we'll jump back to CodeDeploy, and let's paste it in here.
+It actually says here we need S3 bucket name. So let's just replace all of that
+with that. Cool. So just bucket name and the zip file.
+We don't need to deployment description and the rest are fine as defaults.
+So that's create deployment. Now, if we wait a moment, we should see this start.
+There we go. Installing application on your instances,
+zero of three instances updated.
+If we scroll down, you can see these three are in progress.
+We can click on view events of one of them to see what's happening.
+Okay.
+There's a few extra events here compared to a standard deployment because we're
+using a load balancing group. So the block traffic event gets added.
+So you can perform additional tasks before or during traffic being blocked to
+the load balancer. So this can take a little while,
+so I'm just going to pause it and restart once we're done. Okay,
+we're back and we have succeeded in our deployment.
+So you can see all succeeded here. The longest bit was blocked traffic,
+which took about five minutes and allow traffic, which was 50 seconds,
+but everything else was one second or less. So it's a really quick process. Now,
+the next thing I'm going to do is point my domain at my load balancer,
+just so we can access all of this properly.
+So I'm going to jump over to Route 53.
+Now it's fine. If you don't have any domains listed here,
+I'm just going to use some of the ones I've already got it set up as an example,
+you can just visit the load balancer URL directly to test this out.
+I've got my A Pet Guru here. We'll create a record.
+It's going to be an alias and we'll just find our load balancer. Here we are.
+I click create. Now, if we try and go to A Pet Guru we should get our website
+and here it is, it's our website deployed to our EC2 server,
+which is attached to the load balancer where Nginx was installed, got started,
+and all the files were copied to the machine and it all works brilliantly.
+Awesome. I'll show you one last thing.
+If we jump back to code commit and open up the A Pet Guru repository.
+Okay. So in here I've got an appsoec.yaml and this is similar to what we used in
+CodeCommit, but in this file, we're talking about the deployment process.
+So the OS is Linux and we have the file definitions.
+So it tells us where we want to copy all of these files onto the target machine.
+So our index file will be copied to VAR www HTML,
+and so are all the other files that we use to create the website and we've got
+the hooks here and we've defined two of our custom hooks before I install an
+application stop. So during the, before install hook,
+it's going to run in the scripts directory installed dependencies and start
+server and it'll run them as root and in application stop,
+it'll just run stop server.
+So we can actually go back to our repository into the scripts directory
+and I'll open these individually new terms just to show you what they are.
+So install dependencies, all it's going to do is install Nginx
+start server. It's just going to start Nginx and stop server.
+It's going to use pgrep Nginx,
+which we'll just find the process ID of Nginx and if it exists, then run,
+stop and that's it. So we've done a whole lot of awesome things in here,
+and I'm sure you can see how this CICD thing is coming together,
+where we have gone from checking in source to automatically building and now
+automatically deploying our code on a server.
+Next up we have the one final service that ties it altogether. So stick around.
+Thanks for listening. If you have any questions, please let me know. Otherwise,
+feel free to move on to the next lecture.
